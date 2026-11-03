@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobConnect | Find Your Dream Job</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="container nav-container">
+
+            <a href="index.html" class="logo">JobConnect</a>
+
+            <nav class="nav-links">
+                <a href="index.html" class="active">Home</a>
+                <a href="jobs.html">Find Jobs</a>
+                <a href="about.html">About Us</a>
+                <a href="login.html">Login</a>
+                <a href="register.html" class="btn btn-primary">Register</a>
+            </nav>
+
+            <button class="menu-toggle" id="menuButton"
+                    aria-label="Toggle navigation" aria-expanded="false">
+                ☰
+            </button>
+
+        </div>
+    </header>
+
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container hero-content">
+
+            <h1>Find Your <span>Dream Job</span> Today</h1>
+
+            <p>
+                Discover exciting career opportunities and connect with
+                companies that match your skills and ambitions.
+            </p>
+
+            <form class="search-box" action="jobs.html" method="GET">
+
+                <div class="search-input">
+                    <label for="keyword">Job Title or Keyword</label>
+                    <input
+                        type="text"
+                        id="keyword"
+                        name="keyword"
+                        placeholder="e.g. Java Developer"
+                    >
+                </div>
+
+                <div class="search-input">
+                    <label for="location">Location</label>
+                    <input
+                        type="text"
+                        id="location"
+                        name="location"
+                        placeholder="e.g. Mumbai"
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Search Jobs
+                </button>
+
+            </form>
+
+        </div>
+    </section>
+
+
+    <!-- Popular Categories -->
+    <section class="section categories-section">
+        <div class="container">
+
+            <div class="section-heading">
+                <h2>Explore Popular Categories</h2>
+                <p>Find opportunities across different industries.</p>
+            </div>
+
+            <div class="card-container">
+
+                <a href="jobs.html?keyword=IT" class="category-card">
+                    <div class="category-icon">💻</div>
+                    <h3>IT & Software</h3>
+                    <p>Explore technology careers</p>
+                </a>
+
+                <a href="jobs.html?keyword=Marketing" class="category-card">
+                    <div class="category-icon">📈</div>
+                    <h3>Marketing</h3>
+                    <p>Build your marketing career</p>
+                </a>
+
+                <a href="jobs.html?keyword=Design" class="category-card">
+                    <div class="category-icon">🎨</div>
+                    <h3>Design</h3>
+                    <p>Discover creative opportunities</p>
+                </a>
+
+                <a href="jobs.html?keyword=Finance" class="category-card">
+                    <div class="category-icon">💰</div>
+                    <h3>Finance</h3>
+                    <p>Explore finance opportunities</p>
+                </a>
+
+            </div>
+
+        </div>
+    </section>
+
+
+    <!-- Featured Jobs -->
+    <section class="section featured-jobs">
+        <div class="container">
+
+            <div class="section-heading">
+                <h2>Featured Jobs</h2>
+                <p>Explore some of the latest job opportunities.</p>
+            </div>
+
+            <div class="card-container">
+
+                <div class="job-card">
+                    <div class="job-card-header">
+                        <div>
+                            <h3>Java Developer</h3>
+                            <p class="company-name">Tech Solutions</p>
+                        </div>
+                        <span class="job-type">Full Time</span>
+                    </div>
+
+                    <div class="job-info">
+                        <span>📍 Mumbai</span>
+                        <span>💰 ₹3–5 LPA</span>
+                    </div>
+
+                    <a href="job-details.html?id=1"
+                       class="btn btn-outline">View Details</a>
+                </div>
+
+
+                <div class="job-card">
+                    <div class="job-card-header">
+                        <div>
+                            <h3>Frontend Developer</h3>
+                            <p class="company-name">Creative Tech</p>
+                        </div>
+                        <span class="job-type">Full Time</span>
+                    </div>
+
+                    <div class="job-info">
+                        <span>📍 Pune</span>
+                        <span>💰 ₹2.5–4.5 LPA</span>
+                    </div>
+
+                    <a href="job-details.html?id=2"
+                       class="btn btn-outline">View Details</a>
+                </div>
+
+
+                <div class="job-card">
+                    <div class="job-card-header">
+                        <div>
+                            <h3>Web Developer Intern</h3>
+                            <p class="company-name">Digital World</p>
+                        </div>
+                        <span class="job-type">Internship</span>
+                    </div>
+
+                    <div class="job-info">
+                        <span>📍 Mumbai</span>
+                        <span>💰 ₹10,000–15,000</span>
+                    </div>
+
+                    <a href="job-details.html?id=3"
+                       class="btn btn-outline">View Details</a>
+                </div>
+
+            </div>
+
+            <div class="section-action">
+                <a href="jobs.html" class="btn btn-primary">
+                    Explore All Jobs
+                </a>
+            </div>
+
+        </div>
+    </section>
+
+
+    <!-- Call To Action -->
+    <section class="cta-section">
+        <div class="container">
+
+            <h2>Ready to Take the Next Step?</h2>
+
+            <p>
+                Create your account and start exploring opportunities
+                that can shape your future.
+            </p>
+
+            <a href="register.html" class="btn btn-light">
+                Get Started
+            </a>
+
+        </div>
+    </section>
+
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+
+            <h3>JobConnect</h3>
+
+            <p>
+                Connecting talented people with exciting career opportunities.
+            </p>
+
+            <div class="footer-links">
+                <a href="index.html">Home</a>
+                <a href="jobs.html">Find Jobs</a>
+                <a href="about.html">About Us</a>
+                <a href="login.html">Login</a>
+            </div>
+
+            <p class="copyright">
+                © <span id="currentYear">2026</span> JobConnect.
+                All Rights Reserved.
+            </p>
+
+        </div>
+    </footer>
+
+</body>
+</html>

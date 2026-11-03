@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Jobs | JobConnect</title>
+
+```
+<link rel="stylesheet" href="style.css">
+
+<style>
+    .jobs-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+
+    .jobs-heading {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .jobs-heading h1 {
+        font-size: 34px;
+        margin-bottom: 10px;
+    }
+
+    .jobs-search {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+
+    .jobs-search input {
+        flex: 1;
+        min-width: 180px;
+        padding: 13px;
+        border: 1px solid #ddd;
+        border-radius: 7px;
+    }
+
+    .jobs-search button {
+        padding: 12px 22px;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+    }
+
+    .database-job-card {
+        background: white;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        margin-bottom: 18px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+    }
+
+    .database-job-card h3 {
+        margin-bottom: 8px;
+        font-size: 22px;
+    }
+
+    .company-name {
+        color: #2563eb;
+        font-weight: 600;
+    }
+
+    .job-meta {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin: 18px 0;
+        color: #666;
+    }
+
+    .job-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .job-actions a {
+        text-decoration: none;
+    }
+
+    .empty-jobs {
+        text-align: center;
+        padding: 50px 20px;
+        background: white;
+        border-radius: 12px;
+    }
+
+    #jobMessage {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+</style>
+```
+
+</head>
+
+<body>
+
+<header class="navbar">
+
+```
+<a href="home.html" class="logo">JobConnect</a>
+
+<nav>
+    <a href="home.html">Home</a>
+    <a href="jobs.html">Browse Jobs</a>
+    <a href="about.html">About Us</a>
+    <a href="login.html" id="loginLink">Login</a>
+    <a href="register.html" id="registerLink">Register</a>
+    <a href="seeker-dashboard.html" id="seekerDashboard" style="display:none;">
+        Dashboard
+    </a>
+    <a href="recruiter-dashboard.html" id="recruiterDashboard" style="display:none;">
+        Dashboard
+    </a>
+    <a href="post-job.html" id="postJobLink" style="display:none;">
+        Post a Job
+    </a>
+    <a href="#" id="logoutLink" style="display:none;">
+        Logout
+    </a>
+</nav>
+```
+
+</header>
+
+<main class="jobs-container">
+
+```
+<div class="jobs-heading">
+    <h1>Explore Job Opportunities</h1>
+    <p>Find the right opportunity for your career.</p>
+</div>
+
+
+<form class="jobs-search" id="databaseJobSearch">
+
+    <input
+        type="text"
+        id="jobKeyword"
+        placeholder="Job title or keyword"
+    >
+
+    <input
+        type="text"
+        id="jobLocation"
+        placeholder="Location"
+    >
+
+    <button type="submit" class="btn btn-primary">
+        Search Jobs
+    </button>
+
+    <button type="button" class="btn btn-outline" id="showAllJobs">
+        Show All
+    </button>
+
+</form>
+
+
+<p id="jobMessage">Loading jobs...</p>
+
+<div id="jobList"></div>
+```
+
+</main>
+
+<footer class="footer">
+    <p>© 2026 JobConnect. All Rights Reserved.</p>
+</footer>
+
+<script>
+
+const API = "http://localhost:8080/api";
+
+const user = JSON.parse(
+    sessionStorage.getItem("jobConnectUser")
+);
+
+
+// Navbar according to login
+if (user) {
+
+    document.getElementById("loginLink").style.display = "none";
+    document.getElementById("registerLink").style.display = "none";
+    document.getElementById("logoutLink").style.display = "inline";
+
+    if (user.role === "SEEKER") {
+
+        document.getElementById("seekerDashboard").style.display = "inline";
+
+    }
+
+    if (user.role === "RECRUITER") {
+
+        document.getElementById("recruiterDashboard").style.display = "inline";
+        document.getElementById("postJobLink").style.display = "inline";
+
+    }
+
+}
+
+
+// Logout
+document.getElementById("logoutLink").addEventListener("click", function(e) {
+
+    e.preventDefault();
+
+    sessionStorage.removeItem("jobConnectUser");
+
+    window.location.href = "login.html";
+
+});
+
+
+const jobList = document.getElementById("jobList");
+const jobMessage = document.getElementById("jobMessage");
+
+let companies = [];
+
+
+// Load companies
+async function loadCompanies() {
+
+    const response = await fetch(`${API}/companies`);
+
+    if (!response.ok) {
+        throw new Error("Unable to load companies.");
+    }
+
+    companies = await response.json();
+
+}
+
+
+// Load jobs from MySQL
+async function loadJobs(keyword = "", location = "") {
+
+    try {
+
+        jobMessage.textContent = "Loading jobs...";
+        jobList.innerHTML = "";
+
+        const params = new URLSearchParams();
+
+        if (keyword) params.append("keyword", keyword);
+        if (location) params.append("location", location);
+
+        const response = await fetch(
+            `${API}/jobs?${params.toString()}`
+        );
+
+        if (!response.ok) {
+            throw new Error("Unable to load job postings.");
+        }
+
+        const jobs = await response.json();
+
+        const openJobs = jobs.filter(job => job.status === "OPEN");
+
+        jobList.innerHTML = "";
+
+        if (openJobs.length === 0) {
+
+            jobMessage.textContent = "";
+
+            jobList.innerHTML = `
+                <div class="empty-jobs">
+                    <h2>No Jobs Found</h2>
+                    <p>Try another keyword or location.</p>
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        jobMessage.textContent =
+            `${openJobs.length} job(s) available`;
+
+
+        openJobs.forEach(job => {
+
+            const company = companies.find(
+                c => Number(c.companyId) === Number(job.companyId)
+            );
+
+            const companyName = company
+                ? company.companyName
+                : "Company";
+
+            const salary =
+                job.salaryMin || job.salaryMax
+                ? `₹${job.salaryMin || 0} - ₹${job.salaryMax || 0}`
+                : "Not disclosed";
+
+
+            const card = document.createElement("div");
+
+            card.className = "database-job-card";
+
+            card.innerHTML = `
+
+                <h3>${escapeHTML(job.jobTitle)}</h3>
+
+                <p class="company-name">
+                    ${escapeHTML(companyName)}
+                </p>
+
+                <div class="job-meta">
+
+                    <span>📍 ${escapeHTML(job.location)}</span>
+
+                    <span>💼 ${escapeHTML(job.jobType || "Not specified")}</span>
+
+                    <span>🎓 ${escapeHTML(job.experience || "Not specified")}</span>
+
+                    <span>💰 ${escapeHTML(salary)}</span>
+
+                </div>
+
+                <div class="job-actions">
+
+                    <a href="job-details.html?id=${job.jobId}"
+                       class="btn btn-outline">
+                       View Details
+                    </a>
+
+                    ${user && user.role === "SEEKER"
+                        ? `<a href="job-details.html?id=${job.jobId}"
+                              class="btn btn-primary">
+                              Apply Now
+                           </a>`
+                        : ""
+                    }
+
+                </div>
+
+            `;
+
+            jobList.appendChild(card);
+
+        });
+
+    }
+
+    catch(error) {
+
+        jobMessage.textContent = error.message;
+
+    }
+
+}
+
+
+// Search
+document.getElementById("databaseJobSearch")
+.addEventListener("submit", function(e) {
+
+    e.preventDefault();
+
+    const keyword =
+        document.getElementById("jobKeyword").value.trim();
+
+    const location =
+        document.getElementById("jobLocation").value.trim();
+
+    loadJobs(keyword, location);
+
+});
+
+
+// Show all
+document.getElementById("showAllJobs")
+.addEventListener("click", function() {
+
+    document.getElementById("jobKeyword").value = "";
+    document.getElementById("jobLocation").value = "";
+
+    loadJobs();
+
+});
+
+
+// HTML safety
+function escapeHTML(value) {
+
+    if (value === null || value === undefined) return "";
+
+    return String(value).replace(/[&<>"']/g, function(char) {
+
+        return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+        }[char];
+
+    });
+
+}
+
+
+// Initialize
+async function initializeJobsPage() {
+
+    try {
+
+        await loadCompanies();
+
+        const params = new URLSearchParams(window.location.search);
+
+        const keyword = params.get("keyword") || "";
+        const location = params.get("location") || "";
+
+        document.getElementById("jobKeyword").value = keyword;
+        document.getElementById("jobLocation").value = location;
+
+        await loadJobs(keyword, location);
+
+    }
+
+    catch(error) {
+
+        jobMessage.textContent = error.message;
+
+    }
+
+}
+
+initializeJobsPage();
+
+</script>
+
+</body>
+</html>

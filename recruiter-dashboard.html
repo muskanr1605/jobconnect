@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recruiter Dashboard | JobConnect</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+
+<header class="navbar">
+    <div class="container nav-container">
+
+        <a href="home.html" class="logo">JobConnect</a>
+
+        <nav class="nav-links">
+            <a href="home.html">Home</a>
+            <a href="jobs.html">Find Jobs</a>
+            <a href="recruiter-dashboard.html" class="active">Dashboard</a>
+            <a href="applications.html">Applicants</a>
+            <a href="#" id="logoutLink">Logout</a>
+        </nav>
+
+        <button class="menu-toggle" id="menuButton"
+                aria-label="Toggle navigation"
+                aria-expanded="false">☰</button>
+
+    </div>
+</header>
+
+<section class="page-heading">
+    <h1>Recruiter Dashboard</h1>
+    <p>Manage your job postings and applicants.</p>
+</section>
+
+<section class="section">
+
+    <p id="dashboardMessage">Loading recruiter dashboard...</p>
+
+    <!-- Statistics -->
+    <div class="dashboard-stats">
+
+        <div class="card">
+            <h2 id="totalJobs">0</h2>
+            <p>Total Jobs Posted</p>
+        </div>
+
+        <div class="card">
+            <h2 id="totalApplicants">0</h2>
+            <p>Total Applicants</p>
+        </div>
+
+        <div class="card">
+            <h2 id="shortlistedCandidates">0</h2>
+            <p>Shortlisted Candidates</p>
+        </div>
+
+    </div>
+
+    <!-- Profile and Quick Actions -->
+    <div class="dashboard-content">
+
+    
+<div class="card">
+    <h2>Recruiter Profile</h2>
+
+    <p><strong>Name:</strong> <span id="recruiterName">Loading...</span></p>
+    <p><strong>Email:</strong> <span id="recruiterEmail">Loading...</span></p>
+    <p><strong>Phone:</strong> <span id="recruiterPhone">Loading...</span></p>
+    <p><strong>Role:</strong> Recruiter</p>
+</div>
+
+
+
+        <div class="card">
+            <h2>Quick Actions</h2>
+
+            <a href="post-job.html" class="btn">Post New Job</a>
+            <a href="applications.html" class="btn">View Applicants</a>
+        </div>
+
+    </div>
+
+    <!-- Job Postings -->
+    <h2 class="section-title">My Recent Job Postings</h2>
+
+    <div class="table-container">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Job Title</th>
+                    <th>Location</th>
+                    <th>Job Type</th>
+                    <th>Status</th>
+                    <th>Applicants</th>
+                </tr>
+            </thead>
+
+            <tbody id="recruiterJobsTable">
+                <tr>
+                    <td colspan="5">Loading your jobs...</td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+</section>
+
+<footer>
+    <p>© 2026 JobConnect. All Rights Reserved.</p>
+</footer>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", async function () {
+
+    const API = "http://localhost:8080/api";
+
+    const message = document.getElementById("dashboardMessage");
+    const jobsTable = document.getElementById("recruiterJobsTable");
+
+    const storedUser = sessionStorage.getItem("jobConnectUser");
+
+    if (!storedUser) {
+        window.location.href = "login.html";
+        return;
+    }
+
+    const user = JSON.parse(storedUser);
+
+    if (user.role !== "RECRUITER") {
+        window.location.href = "login.html";
+        return;
+    }
+
+    // Recruiter Profile
+    document.getElementById("recruiterName").textContent = user.name || "Not available";
+    document.getElementById("recruiterEmail").textContent = user.email || "Not available";
+    document.getElementById("recruiterPhone").textContent = user.phone || "Not available";
+
+    // Logout
+    document.getElementById("logoutLink").addEventListener("click", function () {
+        sessionStorage.removeItem("jobConnectUser");
+        window.location.href = "login.html";
+    });
+
+    try {
+
+        // Fetch actual jobs posted by this recruiter
+        const jobsResponse = await fetch(
+            `${API}/jobs/recruiter/${user.userId}`
+        );
+
+        if (!jobsResponse.ok) {
+            throw new Error("Unable to fetch recruiter jobs.");
+        }
+
+        const jobs = await jobsResponse.json();
+
+        // Fetch applications for each job
+        const applicationResponses = await Promise.all(
+            jobs.map(job =>
+                fetch(`${API}/applications/job/${job.jobId}`)
+            )
+        );
+
+        if (applicationResponses.some(response => !response.ok)) {
+            throw new Error("Unable to fetch applications.");
+        }
+
+        const applicationsPerJob = await Promise.all(
+            applicationResponses.map(response => response.json())
+        );
+
+        // Calculate actual statistics
+        let totalApplicants = 0;
+        let shortlisted = 0;
+
+        applicationsPerJob.forEach(applications => {
+
+            totalApplicants += applications.length;
+
+            shortlisted += applications.filter(
+                app => app.status === "SHORTLISTED"
+            ).length;
+
+        });
+
+        document.getElementById("totalJobs").textContent = jobs.length;
+        document.getElementById("totalApplicants").textContent = totalApplicants;
+        document.getElementById("shortlistedCandidates").textContent = shortlisted;
+
+        // Display jobs
+        jobsTable.innerHTML = "";
+
+        if (jobs.length === 0) {
+
+            jobsTable.innerHTML = `
+                <tr>
+                    <td colspan="5">You have not posted any jobs yet.</td>
+                </tr>
+            `;
+
+        } else {
+
+            jobs.forEach((job, index) => {
+
+                const row = document.createElement("tr");
+
+                const values = [
+                    job.jobTitle,
+                    job.location,
+                    job.jobType || "Not specified",
+                    job.status || "OPEN",
+                    applicationsPerJob[index].length
+                ];
+
+                values.forEach(value => {
+
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+
+                });
+
+                jobsTable.appendChild(row);
+
+            });
+
+        }
+
+        message.textContent = "Recruiter dashboard loaded successfully.";
+
+    } catch (error) {
+
+        console.error("Recruiter Dashboard Error:", error);
+
+        message.textContent = "Unable to load dashboard: " + error.message;
+
+        jobsTable.innerHTML = `
+            <tr>
+                <td colspan="5">Unable to load job postings.</td>
+            </tr>
+        `;
+
+    }
+
+});
+</script>
+</body>
+</html>

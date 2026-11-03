@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Details | JobConnect</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .details-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .details-card, .apply-card {
+            background: white;
+            padding: 28px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .details-card h1 {
+            margin-bottom: 10px;
+        }
+
+        .company {
+            color: #2563eb;
+            font-weight: bold;
+        }
+
+        .job-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 22px 0;
+            color: #555;
+        }
+
+        .description {
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        .apply-card textarea,
+        .apply-card input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0 20px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            box-sizing: border-box;
+        }
+
+        .apply-card textarea {
+            min-height: 130px;
+            resize: vertical;
+        }
+
+        .apply-card button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        #applicationMessage {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="navbar">
+    <a href="home.html" class="logo">JobConnect</a>
+
+    <nav>
+        <a href="home.html">Home</a>
+        <a href="jobs.html">Browse Jobs</a>
+        <a href="seeker-dashboard.html">Dashboard</a>
+    </nav>
+</header>
+
+<main class="details-container">
+
+    <p id="loadingMessage">Loading job details...</p>
+
+    <div id="jobDetails"></div>
+
+    <section class="apply-card" id="applySection" style="display:none;">
+
+        <h2>Apply for this Job</h2>
+
+        <p>Submit your application to the recruiter.</p>
+
+        <form id="applicationForm">
+
+            <label for="resumePath">Resume Link (Optional)</label>
+
+            <input
+                type="url"
+                id="resumePath"
+                placeholder="Paste your Google Drive resume link"
+            >
+
+            <label for="coverLetter">Cover Letter</label>
+
+            <textarea
+                id="coverLetter"
+                placeholder="Write why you are suitable for this job..."
+            ></textarea>
+
+            <button type="submit" class="btn btn-primary" id="applyButton">
+                Submit Application
+            </button>
+
+            <p id="applicationMessage"></p>
+
+        </form>
+
+    </section>
+
+</main>
+
+<script>
+
+const API = "http://localhost:8080/api";
+
+const user = JSON.parse(
+    sessionStorage.getItem("jobConnectUser")
+);
+
+const jobId = new URLSearchParams(
+    window.location.search
+).get("id");
+
+const jobDetails = document.getElementById("jobDetails");
+const loadingMessage = document.getElementById("loadingMessage");
+const applySection = document.getElementById("applySection");
+
+let currentJob = null;
+
+
+// Load actual job details
+async function loadJobDetails() {
+
+    try {
+
+        if (!jobId) {
+            throw new Error("Job ID is missing.");
+        }
+
+        const response = await fetch(`${API}/jobs/${jobId}`);
+
+        if (!response.ok) {
+            throw new Error("Unable to load job details.");
+        }
+
+        currentJob = await response.json();
+
+        const companyResponse = await fetch(`${API}/companies`);
+
+        if (!companyResponse.ok) {
+            throw new Error("Unable to load company details.");
+        }
+
+        const companies = await companyResponse.json();
+
+        const company = companies.find(
+            c => Number(c.companyId) === Number(currentJob.companyId)
+        );
+
+        const companyName = company
+            ? company.companyName
+            : "Company";
+
+        const salary =
+            currentJob.salaryMin || currentJob.salaryMax
+            ? `₹${currentJob.salaryMin || 0} - ₹${currentJob.salaryMax || 0}`
+            : "Not disclosed";
+
+        jobDetails.innerHTML = `
+
+            <div class="details-card">
+
+                <h1>${escapeHTML(currentJob.jobTitle)}</h1>
+
+                <p class="company">${escapeHTML(companyName)}</p>
+
+                <div class="job-info">
+
+                    <span>📍 ${escapeHTML(currentJob.location)}</span>
+
+                    <span>💼 ${escapeHTML(currentJob.jobType || "Not specified")}</span>
+
+                    <span>🎓 ${escapeHTML(currentJob.experience || "Not specified")}</span>
+
+                    <span>💰 ${escapeHTML(salary)}</span>
+
+                </div>
+
+                <h3>Job Description</h3>
+
+                <p class="description">
+                    ${escapeHTML(currentJob.description)}
+                </p>
+
+                <p><strong>Status:</strong>
+                    ${escapeHTML(currentJob.status)}
+                </p>
+
+            </div>
+
+        `;
+
+        loadingMessage.textContent = "";
+
+        if (user && user.role === "SEEKER" &&
+            currentJob.status === "OPEN") {
+
+            applySection.style.display = "block";
+
+        } else if (!user) {
+
+            applySection.style.display = "block";
+
+            applySection.innerHTML = `
+                <h2>Want to Apply?</h2>
+                <p>Please login with your Job Seeker account to apply.</p>
+                <a href="login.html" class="btn btn-primary">Login</a>
+            `;
+
+        } else if (user.role === "RECRUITER") {
+
+            applySection.style.display = "block";
+
+            applySection.innerHTML = `
+                <h2>Recruiter Account</h2>
+                <p>Recruiters can browse jobs but cannot apply.</p>
+            `;
+
+        } else {
+
+            applySection.style.display = "block";
+
+            applySection.innerHTML = `
+                <h2>Applications Closed</h2>
+                <p>This job is currently not accepting applications.</p>
+            `;
+
+        }
+
+    }
+
+    catch(error) {
+
+        loadingMessage.textContent = error.message;
+
+    }
+
+}
+
+
+// Submit application to backend
+document.getElementById("applicationForm")
+.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    if (!user || user.role !== "SEEKER") {
+        alert("Please login as a job seeker first.");
+        return;
+    }
+
+    const button = document.getElementById("applyButton");
+    const message = document.getElementById("applicationMessage");
+
+    button.disabled = true;
+    button.textContent = "Submitting...";
+
+    message.textContent = "";
+
+    const applicationData = {
+
+        jobId: Number(jobId),
+
+        seekerId: Number(user.userId),
+
+        resumePath: document.getElementById("resumePath").value.trim() || null,
+
+        coverLetter: document.getElementById("coverLetter").value.trim() || null
+
+    };
+
+    try {
+
+        const response = await fetch(`${API}/applications`, {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify(applicationData)
+
+        });
+
+        if (!response.ok) {
+
+            const error = await response.text();
+
+            throw new Error(error);
+
+        }
+
+        message.style.color = "green";
+
+        message.textContent = "Application submitted successfully!";
+
+        button.textContent = "Applied Successfully";
+
+        button.disabled = true;
+
+    }
+
+    catch(error) {
+
+        message.style.color = "red";
+        message.textContent = error.message;
+
+        button.disabled = false;
+        button.textContent = "Submit Application";
+
+    }
+
+});
+
+
+// Escape HTML content
+function escapeHTML(value) {
+
+    if (value === null || value === undefined) {
+        return "";
+    }
+
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[char]);
+
+}
+
+
+loadJobDetails();
+
+</script>
+
+</body>
+</html>

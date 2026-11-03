@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Applications | JobConnect</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .applications-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .applications-header {
+            margin-bottom: 30px;
+        }
+
+        .applications-header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .applications-header p {
+            color: #777;
+        }
+
+        .application-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+        }
+
+        .application-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .applicant-name {
+            font-size: 21px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .application-info {
+            color: #666;
+            line-height: 1.8;
+            margin-top: 15px;
+        }
+
+        .application-info p {
+            margin: 4px 0;
+        }
+
+        .status-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .status-control select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .status-control button {
+            padding: 10px 18px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .status-control button:hover {
+            background: #1d4ed8;
+        }
+
+        .resume-link {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 50px 20px;
+            background: white;
+            border-radius: 12px;
+            color: #777;
+        }
+
+        #applicationsMessage {
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        @media(max-width: 600px) {
+            .applications-container {
+                padding: 12px;
+            }
+
+            .application-card {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="navbar">
+    <div class="logo">JobConnect</div>
+
+    <nav>
+        <a href="home.html">Home</a>
+        <a href="recruiter-dashboard.html">Dashboard</a>
+        <a href="post-job.html">Post a Job</a>
+        <a href="applications.html">Applications</a>
+        <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+</header>
+
+<main class="applications-container">
+
+    <div class="applications-header">
+        <h1>Manage Applications</h1>
+        <p>View applicants and manage their application status.</p>
+    </div>
+
+    <p id="applicationsMessage">Loading applications...</p>
+
+    <div id="applicationsList"></div>
+
+</main>
+
+<script>
+
+const API_URL = "http://localhost:8080/api";
+
+const user = JSON.parse(
+    sessionStorage.getItem("jobConnectUser")
+);
+
+const applicationsList = document.getElementById("applicationsList");
+const message = document.getElementById("applicationsMessage");
+
+// Check recruiter login
+if (!user) {
+    window.location.href = "login.html";
+}
+
+else if (user.role !== "RECRUITER") {
+    window.location.href = "seeker-dashboard.html";
+}
+
+// Logout
+document.getElementById("logoutBtn").addEventListener("click", function(e) {
+    e.preventDefault();
+
+    sessionStorage.removeItem("jobConnectUser");
+
+    window.location.href = "login.html";
+});
+
+
+// Fetch recruiter's applications
+async function loadApplications() {
+
+    try {
+
+        message.textContent = "Loading applications...";
+
+        const response = await fetch(
+            `${API_URL}/applications/recruiter/${user.userId}`
+        );
+
+        if (!response.ok) {
+            throw new Error("Unable to fetch applications.");
+        }
+
+        const applications = await response.json();
+
+        applicationsList.innerHTML = "";
+
+        if (applications.length === 0) {
+
+            message.textContent = "";
+
+            applicationsList.innerHTML = `
+                <div class="empty-message">
+                    <h2>No Applications Yet</h2>
+                    <p>Applications received for your job postings will appear here.</p>
+                </div>
+            `;
+
+            return;
+        }
+
+        message.textContent =
+            `${applications.length} application(s) received`;
+
+        applications.forEach(application => {
+
+            const card = document.createElement("div");
+
+            card.className = "application-card";
+
+            const appliedDate = application.appliedAt
+                ? new Date(application.appliedAt).toLocaleDateString("en-IN")
+                : "Not available";
+
+            const status = application.status || "PENDING";
+
+            card.innerHTML = `
+
+                <div class="application-top">
+
+                    <div>
+                        <div class="applicant-name">
+                            ${escapeHTML(application.applicantName)}
+                        </div>
+
+                        <div style="color:#2563eb;">
+                            ${escapeHTML(application.jobTitle)}
+                        </div>
+                    </div>
+
+                    <strong>${escapeHTML(status)}</strong>
+
+                </div>
+
+                <div class="application-info">
+
+                    <p><strong>Email:</strong>
+                        ${escapeHTML(application.email)}
+                    </p>
+
+                    <p><strong>Phone:</strong>
+                        ${escapeHTML(application.phone || "Not provided")}
+                    </p>
+
+                    <p><strong>Applied On:</strong>
+                        ${appliedDate}
+                    </p>
+
+                    <p><strong>Cover Letter:</strong>
+                        ${escapeHTML(application.coverLetter || "Not provided")}
+                    </p>
+
+                    <p><strong>Resume:</strong>
+                        ${application.resumePath
+                            ? escapeHTML(application.resumePath)
+                            : "Not uploaded"}
+                    </p>
+
+                </div>
+
+                <div class="status-control">
+
+                    <label>
+                        <strong>Update Status:</strong>
+                    </label>
+
+                    <select id="status-${application.applicationId}">
+
+                        <option value="PENDING" ${status === "PENDING" ? "selected" : ""}>
+                            Pending
+                        </option>
+
+                        <option value="REVIEWED" ${status === "REVIEWED" ? "selected" : ""}>
+                            Reviewed
+                        </option>
+
+                        <option value="SHORTLISTED" ${status === "SHORTLISTED" ? "selected" : ""}>
+                            Shortlisted
+                        </option>
+
+                        <option value="REJECTED" ${status === "REJECTED" ? "selected" : ""}>
+                            Rejected
+                        </option>
+
+                    </select>
+
+                    <button onclick="updateApplicationStatus(${application.applicationId})">
+                        Update Status
+                    </button>
+
+                </div>
+
+            `;
+
+            applicationsList.appendChild(card);
+
+        });
+
+    }
+
+    catch(error) {
+
+        message.textContent = error.message;
+
+        applicationsList.innerHTML = "";
+
+    }
+
+}
+
+
+// Update status in MySQL
+async function updateApplicationStatus(applicationId) {
+
+    const select = document.getElementById(
+        `status-${applicationId}`
+    );
+
+    const newStatus = select.value;
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/applications/${applicationId}/status`,
+            {
+                method: "PATCH",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    status: newStatus
+                })
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Unable to update application status.");
+        }
+
+        alert("Application status updated successfully!");
+
+        loadApplications();
+
+    }
+
+    catch(error) {
+
+        alert(error.message);
+
+    }
+
+}
+
+
+// Prevent HTML injection in applicant details
+function escapeHTML(value) {
+
+    if (value === null || value === undefined) {
+        return "";
+    }
+
+    return String(value).replace(/[&<>"']/g, function(char) {
+        return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+        }[char];
+    });
+
+}
+
+
+if (user && user.role === "RECRUITER") {
+    loadApplications();
+}
+
+</script>
+
+</body>
+</html>

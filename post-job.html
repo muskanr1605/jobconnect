@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post a Job | JobConnect</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+
+<header class="navbar">
+    <a href="home.html" class="logo">Job<span>Connect</span></a>
+    <nav>
+        <a href="home.html">Home</a>
+        <a href="recruiter-dashboard.html">Dashboard</a>
+        <a href="applications.html">Applications</a>
+    </nav>
+</header>
+
+<section class="form-section">
+    <div class="form-container">
+
+        <h2>Post a New Job</h2>
+        <p>Provide the details of your job opening.</p>
+
+        <form id="postJobForm">
+
+            <label>Company Name</label>
+            <input type="text" id="companyName" required>
+
+            <label>Job Title</label>
+            <input type="text" id="jobTitle" required>
+
+            <label>Job Description</label>
+            <textarea id="description" rows="5" required></textarea>
+
+            <label>Location</label>
+            <input type="text" id="location" required>
+
+            <label>Minimum Salary</label>
+            <input type="number" id="salaryMin" min="0">
+
+            <label>Maximum Salary</label>
+            <input type="number" id="salaryMax" min="0">
+
+            <label>Job Type</label>
+            <select id="jobType" required>
+                <option value="">Select Job Type</option>
+                <option value="Full Time">Full Time</option>
+                <option value="Part Time">Part Time</option>
+                <option value="Internship">Internship</option>
+            </select>
+
+            <label>Experience Required</label>
+            <input type="text" id="experience" placeholder="Example: Fresher">
+
+            <button type="submit" class="btn full-btn" id="publishButton">
+                Publish Job
+            </button>
+
+            <p id="jobMessage"></p>
+
+        </form>
+    </div>
+</section>
+
+<footer>
+    <p>© 2026 JobConnect. All Rights Reserved.</p>
+</footer>
+
+<script>
+const API = "http://localhost:8080/api";
+
+document.getElementById("postJobForm").addEventListener("submit", async function(e) {
+
+    e.preventDefault();
+
+    const user = JSON.parse(sessionStorage.getItem("jobConnectUser"));
+
+    if (!user || user.role !== "RECRUITER") {
+        alert("Please login as a recruiter.");
+        window.location.href = "login.html";
+        return;
+    }
+
+    const button = document.getElementById("publishButton");
+    const message = document.getElementById("jobMessage");
+
+    button.disabled = true;
+    button.textContent = "Publishing...";
+    message.textContent = "";
+
+    try {
+
+        const companyName = document.getElementById("companyName").value.trim();
+
+        // Find existing company belonging to this recruiter
+        const companyResponse = await fetch(`${API}/companies`);
+
+        if (!companyResponse.ok) throw new Error("Could not load companies");
+
+        const companies = await companyResponse.json();
+
+        let company = companies.find(c =>
+            Number(c.recruiterId) === Number(user.userId) &&
+            c.companyName.toLowerCase() === companyName.toLowerCase()
+        );
+
+        // Create company if it does not exist
+        if (!company) {
+
+            const createResponse = await fetch(`${API}/companies`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    recruiterId: user.userId,
+                    companyName: companyName
+                })
+            });
+
+            if (!createResponse.ok) {
+                throw new Error(await createResponse.text());
+            }
+
+            company = await createResponse.json();
+        }
+
+        const minValue = document.getElementById("salaryMin").value;
+        const maxValue = document.getElementById("salaryMax").value;
+
+        const minSalary = minValue === "" ? null : Number(minValue);
+        const maxSalary = maxValue === "" ? null : Number(maxValue);
+
+        if (minSalary !== null && maxSalary !== null && maxSalary < minSalary) {
+            throw new Error("Maximum salary cannot be less than minimum salary.");
+        }
+
+        const jobData = {
+            recruiterId: user.userId,
+            companyId: company.companyId,
+            jobTitle: document.getElementById("jobTitle").value.trim(),
+            description: document.getElementById("description").value.trim(),
+            location: document.getElementById("location").value.trim(),
+            salaryMin: minSalary,
+            salaryMax: maxSalary,
+            jobType: document.getElementById("jobType").value,
+            experience: document.getElementById("experience").value.trim(),
+            status: "OPEN"
+        };
+
+        const response = await fetch(`${API}/jobs`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(jobData)
+        });
+
+        if (!response.ok) throw new Error(await response.text());
+
+        const savedJob = await response.json();
+
+        message.style.color = "green";
+        message.textContent = "Job published successfully!";
+
+        button.textContent = "Published Successfully";
+
+        setTimeout(() => {
+            window.location.href = "recruiter-dashboard.html";
+        }, 1500);
+
+    } catch (error) {
+
+        message.style.color = "red";
+        message.textContent = error.message;
+
+        button.disabled = false;
+        button.textContent = "Publish Job";
+    }
+});
+</script>
+
+</body>
+</html>

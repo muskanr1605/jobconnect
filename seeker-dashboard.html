@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Seeker Dashboard | JobConnect</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+
+<body>
+
+<header class="navbar">
+    <div class="container nav-container">
+
+        <a href="home.html" class="logo">JobConnect</a>
+
+        <nav class="nav-links">
+            <a href="home.html">Home</a>
+            <a href="jobs.html">Find Jobs</a>
+            <a href="seeker-dashboard.html">Dashboard</a>
+            <a href="applications.html">Applications</a>
+            <a href="#" id="logoutLink">Logout</a>
+        </nav>
+
+        <button class="menu-toggle" id="menuButton"
+                aria-label="Toggle navigation"
+                aria-expanded="false">☰</button>
+
+    </div>
+</header>
+
+<section class="page-heading">
+    <h1>Job Seeker Dashboard</h1>
+    <p>Welcome back! Manage your profile and track your applications.</p>
+</section>
+
+<section class="section">
+
+    <p id="dashboardMessage">Loading your dashboard...</p>
+
+    <!-- Dashboard Statistics -->
+    <div class="dashboard-stats">
+
+        <div class="card">
+            <h2 id="appliedCount">0</h2>
+            <p>Applied Jobs</p>
+        </div>
+
+        <div class="card">
+            <h2 id="shortlistedCount">0</h2>
+            <p>Shortlisted</p>
+        </div>
+
+        <div class="card">
+            <h2 id="savedCount">0</h2>
+            <p>Saved Jobs</p>
+        </div>
+
+    </div>
+
+    <!-- Profile and Quick Actions -->
+    <div class="dashboard-content">
+
+        <div class="card">
+            <h2>My Profile</h2>
+
+            <p><strong>Name:</strong> <span id="userName">Loading...</span></p>
+            <p><strong>Email:</strong> <span id="userEmail">Loading...</span></p>
+            <p><strong>Phone:</strong> <span id="userPhone">Loading...</span></p>
+            <p><strong>Role:</strong> <span id="userRole">Loading...</span></p>
+        </div>
+
+        <div class="card">
+            <h2>Quick Actions</h2>
+
+            <a href="jobs.html" class="btn">Browse Jobs</a>
+            <a href="applications.html" class="btn">My Applications</a>
+        </div>
+
+    </div>
+
+    <!-- Recent Applications -->
+    <h2 class="section-title">My Recent Applications</h2>
+
+    <div class="table-container">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Job Title</th>
+                    <th>Company</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody id="applicationsTable">
+
+                <tr>
+                    <td colspan="4">Loading applications...</td>
+                </tr>
+
+            </tbody>
+        </table>
+
+    </div>
+
+</section>
+
+<footer>
+    <p>© 2026 JobConnect. All Rights Reserved.</p>
+</footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+
+    const API = "http://localhost:8080/api";
+
+    // Check logged-in user
+    const storedUser = sessionStorage.getItem("jobConnectUser");
+
+    if (!storedUser) {
+        window.location.href = "login.html";
+        return;
+    }
+
+    const user = JSON.parse(storedUser);
+
+    if (user.role !== "SEEKER") {
+        window.location.href = "login.html";
+        return;
+    }
+
+    const message = document.getElementById("dashboardMessage");
+
+    // Logout
+    document.getElementById("logoutLink").addEventListener("click", function () {
+        sessionStorage.removeItem("jobConnectUser");
+        window.location.href = "login.html";
+    });
+
+    // Display logged-in user details
+    document.getElementById("userName").textContent = user.name || "Not available";
+    document.getElementById("userEmail").textContent = user.email || "Not available";
+    document.getElementById("userPhone").textContent = user.phone || "Not available";
+    document.getElementById("userRole").textContent = "Job Seeker";
+
+    try {
+
+        // Fetch actual database records
+        const [applicationsResponse, savedResponse, jobsResponse, companiesResponse] =
+            await Promise.all([
+                fetch(`${API}/applications/seeker/${user.userId}`),
+                fetch(`${API}/saved-jobs/seeker/${user.userId}`),
+                fetch(`${API}/jobs`),
+                fetch(`${API}/companies`)
+            ]);
+
+        if (!applicationsResponse.ok || !savedResponse.ok ||
+            !jobsResponse.ok || !companiesResponse.ok) {
+            throw new Error("Unable to fetch dashboard data.");
+        }
+
+        const applications = await applicationsResponse.json();
+        const savedJobs = await savedResponse.json();
+        const jobs = await jobsResponse.json();
+        const companies = await companiesResponse.json();
+
+        // Calculate actual statistics
+        document.getElementById("appliedCount").textContent = applications.length;
+
+        document.getElementById("shortlistedCount").textContent =
+            applications.filter(app => app.status === "SHORTLISTED").length;
+
+        document.getElementById("savedCount").textContent = savedJobs.length;
+
+        // Match applications with actual jobs and companies
+        const jobsMap = new Map(jobs.map(job => [job.jobId, job]));
+        const companiesMap = new Map(companies.map(company => [company.companyId, company]));
+
+        const table = document.getElementById("applicationsTable");
+        table.innerHTML = "";
+
+        if (applications.length === 0) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="4">You have not applied for any jobs yet.</td>
+                </tr>
+            `;
+
+        } else {
+
+            applications.slice().reverse().slice(0, 5).forEach(application => {
+
+                const job = jobsMap.get(application.jobId);
+
+                const company = job
+                    ? companiesMap.get(job.companyId)
+                    : null;
+
+                const row = document.createElement("tr");
+
+                const values = [
+                    job ? job.jobTitle : "Job #" + application.jobId,
+                    company ? company.companyName : "Company not available",
+                    job ? job.location : "Not available",
+                    application.status || "PENDING"
+                ];
+
+                values.forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+
+                table.appendChild(row);
+
+            });
+
+        }
+
+        message.textContent = "Dashboard data loaded successfully.";
+
+    } catch (error) {
+
+        console.error("Dashboard Error:", error);
+
+        message.textContent =
+            "Could not load dashboard data. Please check whether the backend is running.";
+
+        document.getElementById("applicationsTable").innerHTML = `
+            <tr>
+                <td colspan="4">Unable to load applications.</td>
+            </tr>
+        `;
+
+    }
+
+});
+</script>
+
+</body>
+</html>
