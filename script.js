@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
 
                 const response = await fetch(
-                    "http://localhost:8080/api/users/login",
+                    "https://jobconnect-65l2.onrender.com/api/users/login",
                     {
                         method: "POST",
 
@@ -358,7 +358,7 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
 
                 const response = await fetch(
-                    "http://localhost:8080/api/users/register",
+                    "https://jobconnect-65l2.onrender.com/api/users/register",
                     {
                         method: "POST",
 
