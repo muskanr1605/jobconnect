@@ -48,18 +48,39 @@ public class UserService {
 
     public User login(LoginRequest request) {
 
-        User user = repository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    User user = repository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (!verifyPassword(
-            request.getPassword(),
-            user.getPasswordHash()
-        )) {
-            throw new RuntimeException("Invalid password");
+    String storedPassword = user.getPasswordHash();
+    String enteredPassword = request.getPassword();
+
+    boolean passwordMatches;
+
+    // Handle old accounts whose passwords are still plain text
+    if (storedPassword != null && !storedPassword.contains(":")) {
+
+        passwordMatches = MessageDigest.isEqual(
+            enteredPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+            storedPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        // Upgrade the old password to a secure hash
+        if (passwordMatches) {
+            user.setPasswordHash(hashPassword(enteredPassword));
+            repository.save(user);
         }
 
-        return user;
+    } else {
+        // Verify passwords that are already hashed
+        passwordMatches = verifyPassword(enteredPassword, storedPassword);
     }
+
+    if (!passwordMatches) {
+        throw new RuntimeException("Invalid password");
+    }
+
+    return user;
+}
 
     public List<User> getAllUsers() {
         return repository.findAll();
